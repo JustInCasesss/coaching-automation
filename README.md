@@ -95,7 +95,7 @@ Admin routes require the `X-Admin-Token: <ADMIN_TOKEN>` header. An unset token f
 coaching_bot/   Python application and CLI
 config/         demo config and editable example
 n8n/            importable workflow JSON
-deploy/         Caddy and systemd configuration
+deploy/         Caddy reverse-proxy configuration
 docs/           setup and operations documentation
 scripts/        demo and smoke-test helpers
 tests/          security regression tests
@@ -108,7 +108,7 @@ tests/          security regression tests
 - Use persistent storage; test database and n8n backups and restores.
 - Restrict dashboard and report access before public exposure. Treat guardian, student, payment, attendance, and exam data as sensitive.
 - Review consent, retention, opt-out handling, and applicable legal obligations with the institute. This software is not legal advice.
-- After deployment, run `BASE_URL=https://your-bot-host ./scripts/smoke_test.sh`.
+- After deployment, run `BASE_URL=https://your-bot-host sh scripts/smoke_test.sh`.
 
 ## License
 No license has been added yet. Add one before distributing or commercially reusing this repository.
