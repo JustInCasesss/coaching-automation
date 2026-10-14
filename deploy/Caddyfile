@@ -1,0 +1,9 @@
+{$BOT_HOST} {
+    encode zstd gzip
+    reverse_proxy bot:8080
+}
+
+{$N8N_HOST} {
+    encode zstd gzip
+    reverse_proxy n8n:5678
+}
