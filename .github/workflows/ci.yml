@@ -1,0 +1,35 @@
+name: CI
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile Python
+        run: python -m compileall -q coaching_bot tests
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Validate JSON config and workflows
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          files = [*Path("config").glob("*.json"), *Path("n8n").glob("*.json")]
+          if not files:
+              raise SystemExit("No configuration or workflow JSON files found")
+          for path in files:
+              json.loads(path.read_text(encoding="utf-8"))
+              print("OK", path)
+          PY
+      - name: Demo smoke test
+        env:
+          COACH_DEMO_MODE: "true"
+        run: |
+          python -m coaching_bot.cli demo --reseed
+          test -s out/demo_transcript.html

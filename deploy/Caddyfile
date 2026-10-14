@@ -1,0 +1,26 @@
+{$BOT_HOST} {
+    encode zstd gzip
+
+    # Only the Meta webhook and liveness probe are public. Dashboard, reports,
+    # and all admin routes can expose personal data or mutate records, so they
+    # are deliberately not proxied through the public hostname.
+    @public path /webhook /health
+    handle @public {
+        reverse_proxy bot:8080
+    }
+    handle {
+        respond "Not found" 404
+    }
+
+    log {
+        output file /data/access.log {
+            roll_size 10mb
+            roll_keep 5
+        }
+    }
+}
+
+{$N8N_HOST} {
+    encode zstd gzip
+    reverse_proxy n8n:5678
+}
