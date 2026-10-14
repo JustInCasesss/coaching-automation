@@ -66,9 +66,9 @@ class Handler(BaseHTTPRequestHandler):
 
     # ------------------------------------------------------------------ auth
     def _authed(self) -> bool:
-        if not ADMIN_TOKEN:
-            return True  # open in demo mode; set ADMIN_TOKEN before go-live
-        return self.headers.get("X-Admin-Token") == ADMIN_TOKEN
+        # Fail closed: an unset secret must never make admin routes public.
+        # Set ADMIN_TOKEN before using any /admin/* route.
+        return bool(ADMIN_TOKEN) and self.headers.get("X-Admin-Token", "") == ADMIN_TOKEN
 
     def _body(self) -> dict:
         length = int(self.headers.get("Content-Length") or 0)
