@@ -93,7 +93,7 @@ The API returns the newly-created student's integer id. Use it as student_id whe
       -H "Content-Type: application/json" ^
       -d "{\"student_id\":1,\"description\":\"October fee\",\"amount\":1200,\"due_date\":\"2026-10-30\"}"
 
-On Windows PowerShell, curl may be an alias for Invoke-WebRequest. Use curl.exe for the examples above or use Invoke-RestMethod.
+The multi-line curl examples use Windows Command Prompt line continuation (^). In PowerShell, paste each request on one line or use Invoke-RestMethod. On Windows PowerShell, curl may be an alias for Invoke-WebRequest. Use curl.exe for the examples above or use Invoke-RestMethod.
 
 ### Preview a reminder run
 

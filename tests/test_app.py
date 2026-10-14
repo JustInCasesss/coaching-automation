@@ -34,7 +34,7 @@ class DatabaseTests(unittest.TestCase):
 
     def test_reminder_stages_skip_missed_old_stages(self) -> None:
         self.assertEqual(db.reminder_stage("2026-10-08", date(2026, 10, 15)), "D+7")
-        self.assertEqual(db.reminder_stage("2026-10-01", date(2026, 10, 15)), "D+15")
+        self.assertEqual(db.reminder_stage("2026-09-30", date(2026, 10, 15)), "D+15")
         self.assertEqual(db.reminder_stage("2026-10-22", date(2026, 10, 15)), "T-7")
         self.assertIsNone(db.reminder_stage("2026-10-20", date(2026, 10, 15)))
 
