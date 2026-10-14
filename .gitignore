@@ -1,8 +1,9 @@
-# Never commit client data or credentials.
+# Secrets
 .env
 .env.*
 !.env.example
 
+# Local data and generated output
 data/
 out/
 *.db
@@ -11,25 +12,24 @@ out/
 *.sqlite
 *.jsonl
 
-# Per-client config holds real fee structures and staff phone numbers.
-# Only the demo config is committed.
+# Client configuration: only checked-in demo files are tracked
 config/*.json
 !config/institute.json
-
-# Secrets / keys
-*.pem
-*.key
+!config/institute.example.json
 
 # Python
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
 .venv/
 venv/
+
+# Secrets / keys / logs
+*.pem
+*.key
+*.log
 
 # Editors / OS
 .idea/
 .vscode/
 .DS_Store
 Thumbs.db
-*.log
