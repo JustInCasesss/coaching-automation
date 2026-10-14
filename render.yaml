@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: coaching-automation
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m coaching_bot.cli serve --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: COACH_DEMO_MODE
+        value: "true"
+      - key: ADMIN_TOKEN
+        generateValue: true
