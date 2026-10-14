@@ -5,10 +5,10 @@ performance reports to parents.** A complete, deployable, sellable automation
 for coaching institutes, tuition centres and schools — built to be white-labelled
 per client.
 
-This is not a demo script or a slide deck. It is a running system: the engine in
-`coaching_bot/` answers real WhatsApp conversations, runs a seven-stage fee
-reminder ladder, and pushes test-score and attendance alerts to parents. Every
-claim in this README is backed by a command you can run in the next five minutes.
+This is not a slide deck. The engine in `coaching_bot/` answers WhatsApp
+conversations, runs a seven-stage fee reminder ladder, and pushes test-score and
+attendance alerts to parents. Every claim below can be checked with the commands
+in the next section. All institute data in this repo is **fictional demo data**.
 
 ---
 
@@ -66,15 +66,16 @@ What makes it survive contact with real parents:
   the final notice, not seven messages at once because the server was down. Older
   unsent stages are retired as `superseded`.
 - **Never double-sends.** `UNIQUE(fee_schedule_id, stage)` in the database, so a
-  double-fired cron or a restarted scheduler cannot duplicate. Verified: the
-  second consecutive tick sends 0.
+  double-fired cron or a restarted scheduler cannot duplicate. The second
+  consecutive tick in the 5-minute proof sends 0.
 - **Quiet hours.** Nothing goes out between 20:00 and 09:00 except the D+7 and
   D+15 escalations, which are held and released on the next in-hours tick.
 - **Pause on reply.** If the parent is already in the chat, the reminder is held
   and staff are still escalated. Nagging a parent who is actively talking to you
   is how you get blocked.
 - **Opt-out is absolute.** `STOP` silences everything immediately; `START`
-  restores it. DPDP/TRAI hygiene built in, not bolted on.
+  restores it. This supports DPDP/TRAI consent requirements, but it is not legal
+  advice - each institute must confirm its own compliance.
 - **Reply `PAID`** → routed to accounts with the parent's exact message, plus a
   request for the screenshot or UTR.
 - **Receipt on payment** — the moment accounts marks a fee paid, the ladder is
@@ -90,6 +91,31 @@ What makes it survive contact with real parents:
 - **Low-attendance alerts** when a child drops below 75% in 30 days.
 - **Printable report card** per student at `GET /report/<roll_no>` — hand it over
   at a parent-teacher meeting or attach it as a PDF.
+
+---
+
+## Quick start (Docker)
+
+```bash
+git clone https://github.com/JustInCasesss/coaching-automation.git
+cd coaching-automation
+cp .env.example .env     # set ADMIN_TOKEN and N8N_VERSION (both required)
+docker compose up -d --build
+```
+
+Without Docker: `python -m coaching_bot.cli demo --reseed` (Python 3.11+).
+
+## Repository layout
+
+```
+coaching_bot/   the engine (server, flows, reminders, performance, whatsapp client, cli)
+config/         institute.json - demo configuration (replace per client)
+n8n/            importable n8n workflows
+deploy/         Caddyfile and systemd units
+scripts/        run_demo / smoke_test scripts
+docs/           offer, sales script, setup guide, Meta templates, runbook
+Dockerfile  docker-compose.yml  .env.example  .gitignore  .dockerignore
+```
 
 ---
 
@@ -158,7 +184,8 @@ python -m coaching_bot.cli serve --port 8080
 | `POST /admin/stats` · `overdue` · `leads` · `alerts` | data for n8n digests |
 | `POST /admin/reset-demo` | reload demo data |
 
-`/admin/*` requires the `X-Admin-Token` header once `ADMIN_TOKEN` is set.
+`/admin/*` requires the `X-Admin-Token` header. **Always set `ADMIN_TOKEN`** -
+`docker-compose.yml` refuses to start without it.
 
 ## Demo mode
 
@@ -198,6 +225,16 @@ sends rich free-form text inside the window and the matching approved template
 outside it. But the templates themselves must be submitted and approved before
 go-live, which takes 1–3 working days. `docs/TEMPLATES_FOR_META.md` has the exact
 copy. **Submit templates on day one of onboarding, not day ten.**
+
+## Security notes
+
+- Never commit `.env`, tokens, real student records, or the `data/` folder
+  (`.gitignore` already excludes them).
+- n8n does not receive the WhatsApp token; it only gets the variables its
+  workflows need (see `docker-compose.yml`).
+- Pin `N8N_VERSION` to a specific release instead of `latest`.
+- Student names, fees and scores are personal data of minors and their families:
+  use a private repo and a persistent, backed-up server for any real client.
 
 ## Before publishing or deploying
 

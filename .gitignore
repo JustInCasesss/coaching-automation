@@ -12,14 +12,22 @@ out/
 *.jsonl
 
 # Per-client config holds real fee structures and staff phone numbers.
+# Only the demo config is committed.
 config/*.json
 !config/institute.json
 
+# Secrets / keys
+*.pem
+*.key
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
 .venv/
 venv/
+
+# Editors / OS
 .idea/
 .vscode/
 .DS_Store

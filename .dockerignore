@@ -1,0 +1,15 @@
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+data/
+out/
+*.db
+*.jsonl
+__pycache__/
+*.pyc
+.venv/
+venv/
+.idea/
+.vscode/
