@@ -1,0 +1,17 @@
+{
+  "institute_name": "Demo Coaching Centre",
+  "courses": [
+    {
+      "name": "Foundation",
+      "details": "Classes 6–10. Demo information; replace with your approved courses."
+    },
+    {
+      "name": "Competitive Exam Preparation",
+      "details": "Demo information; replace with your approved courses."
+    }
+  ],
+  "fees": {
+    "note": "Demo fee information. Confirm current fees with the institute office."
+  },
+  "support_hours": "09:00–20:00 Asia/Kolkata"
+}

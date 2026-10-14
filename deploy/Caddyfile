@@ -1,0 +1,6 @@
+# Set BOT_HOST to your public DNS name before deploying.
+# Caddy provisions and renews HTTPS certificates automatically for public domains.
+{$BOT_HOST} {
+    encode zstd gzip
+    reverse_proxy bot:8080
+}

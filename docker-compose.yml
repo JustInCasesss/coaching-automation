@@ -1,66 +1,36 @@
-# Single-box deploy: the bot plus n8n, with Caddy terminating TLS.
-# The bot has no external services, so a 1 vCPU / 1 GB VPS runs a 2,000-student
-# centre comfortably. SQLite lives in a named volume; back it up with
-# `sqlite3 /data/coaching.db ".backup /data/backup.db"`.
-#
-# Setup:  cp .env.example .env   (fill in ADMIN_TOKEN and N8N_VERSION)
-#         docker compose up -d --build
 services:
   bot:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     restart: unless-stopped
-    env_file: .env
+    env_file:
+      - .env
     environment:
-      # `environment` wins over `env_file`: force persistent paths inside the
-      # container so the DB is stored in the bot-data volume, not the image.
-      COACH_DATA_DIR: /data
-      COACH_OUT_DIR: /data/out
+      PORT: "8080"
       COACH_DB: /data/coaching.db
       COACH_OUTBOX: /data/outbox.jsonl
+      COACH_DATA_DIR: /data
       COACH_CONFIG: /app/config/institute.json
-      # Fail closed: do not start with an open admin API.
-      ADMIN_TOKEN: ${ADMIN_TOKEN:?Set ADMIN_TOKEN in .env (see .env.example)}
     volumes:
       - bot-data:/data
       - ./config:/app/config:ro
-    security_opt:
-      - no-new-privileges:true
     expose:
       - "8080"
-    # no ports: published - Caddy is the only thing that should reach it.
-
-  n8n:
-    image: docker.n8n.io/n8nio/n8n:${N8N_VERSION:?Set N8N_VERSION in .env to a pinned n8n release}
-    restart: unless-stopped
-    # No env_file on purpose: n8n must NOT receive the WhatsApp token.
-    # It only gets the variables its workflows use.
-    environment:
-      GENERIC_TIMEZONE: Asia/Kolkata
-      TZ: Asia/Kolkata
-      N8N_HOST: ${N8N_HOST:-n8n.yourinstitute.in}
-      N8N_PROTOCOL: https
-      WEBHOOK_URL: https://${N8N_HOST:-n8n.yourinstitute.in}/
-      N8N_PROXY_HOPS: "1"
-      # The bundled workflows read these via $env, so allow env access.
-      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
-      COACHING_BOT_URL: ${COACHING_BOT_URL:-http://bot:8080}
-      COACHING_ADMIN_TOKEN: ${COACHING_ADMIN_TOKEN:-${ADMIN_TOKEN}}
-      OWNER_ALERT_PHONE: ${OWNER_ALERT_PHONE:-}
-      ACCOUNTS_ALERT_PHONE: ${ACCOUNTS_ALERT_PHONE:-}
-      INSTITUTE_NAME: ${INSTITUTE_NAME:-}
-      PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET:-}
-      CRM_SHEET_ID: ${CRM_SHEET_ID:-}
-      REMINDER_LOG_SHEET_ID: ${REMINDER_LOG_SHEET_ID:-}
-      DAILY_TIP_MESSAGE: ${DAILY_TIP_MESSAGE:-}
-      DAILY_TIP_COURSE: ${DAILY_TIP_COURSE:-}
-    volumes:
-      - n8n-data:/home/node/.n8n
-    expose:
-      - "5678"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=4).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
 
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    environment:
+      BOT_HOST: ${BOT_HOST:-localhost}
     ports:
       - "80:80"
       - "443:443"
@@ -68,17 +38,11 @@ services:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
-    environment:
-      BOT_HOST: ${BOT_HOST:-bot.yourinstitute.in}
-      N8N_HOST: ${N8N_HOST:-n8n.yourinstitute.in}
     depends_on:
       bot:
         condition: service_healthy
-      n8n:
-        condition: service_started
 
 volumes:
   bot-data:
-  n8n-data:
   caddy-data:
   caddy-config:

@@ -1,0 +1,4 @@
+# Example crontab entry. This runs at 09:15 in the host's local timezone.
+# Confirm the host timezone and test the command without --live first.
+# Replace the path with your real deployment directory.
+15 9 * * * cd /opt/coaching-automation && docker compose exec -T bot python -m coaching_bot.cli reminders --live >> /var/log/coaching-reminders.log 2>&1

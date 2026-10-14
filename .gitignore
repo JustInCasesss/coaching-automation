@@ -1,8 +1,11 @@
-# Never commit client data or credentials.
+# Environment and secrets
 .env
 .env.*
 !.env.example
+*.pem
+*.key
 
+# Persistent/user-specific data
 data/
 out/
 *.db
@@ -11,25 +14,20 @@ out/
 *.sqlite
 *.jsonl
 
-# Per-client config holds real fee structures and staff phone numbers.
-# Only the demo config is committed.
-config/*.json
-!config/institute.json
-
-# Secrets / keys
-*.pem
-*.key
-
 # Python
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
 .venv/
 venv/
+.pytest_cache/
 
-# Editors / OS
+# Editors and operating systems
 .idea/
 .vscode/
 .DS_Store
 Thumbs.db
 *.log
+
+# Keep client-specific institute configurations out of Git.
+config/*.json
+!config/institute.json

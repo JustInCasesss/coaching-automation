@@ -1,253 +1,169 @@
-# Coaching Institute WhatsApp Automation
+# Coaching Institute Automation
 
-**Instant admission answers on WhatsApp + automated fee reminders + student
-performance reports to parents.** A complete, deployable, sellable automation
-for coaching institutes, tuition centres and schools — built to be white-labelled
-per client.
+A small, self-hostable service for coaching centres. It combines WhatsApp Cloud API webhook handling, opt-out controls, lead capture, student and fee records, fee-reminder templates, and test-score alerts. It uses Python's standard library and SQLite, so there are no Python packages to install.
 
-This is not a slide deck. The engine in `coaching_bot/` answers WhatsApp
-conversations, runs a seven-stage fee reminder ladder, and pushes test-score and
-attendance alerts to parents. Every claim below can be checked with the commands
-in the next section. All institute data in this repo is **fictional demo data**.
+> The repository ships with fictional demo institute configuration. Use demo mode first. Do not add real student records, credentials, or message logs to Git.
 
----
+## Features
 
-## The 5-minute proof
+- WhatsApp webhook verification and optional Meta request-signature validation.
+- Admission enquiry replies and lead capture with a simple, explainable lead score.
+- STOP/START opt-out handling and duplicate webhook-message protection.
+- Protected admin endpoints for student records, fee schedules, payment marking, scores, lead lists, and aggregate statistics.
+- Fee reminders for T-7, T-3, T-1, due date, D+3, D+7, and D+15 stages. Each fee/stage is deduplicated in SQLite, old missed stages are skipped, and default quiet hours are 20:00–09:00 Asia/Kolkata.
+- Scheduled fee reminders use a configured, pre-approved WhatsApp template. Replies to incoming messages use free-form text only in response to the active conversation.
+- Docker Compose deployment with Caddy HTTPS, persistent database storage, health checks, a non-root application user, and GitHub Actions tests.
 
-```bash
-python -m coaching_bot.cli demo --reseed      # seeds a centre, runs 4 real conversations
-python -m coaching_bot.cli reminders --dry-run --force-quiet
-python -m coaching_bot.cli reminders --dry-run --force-quiet   # must send 0
-python -m coaching_bot.cli stats
-```
+This is an extensible MVP, not an all-in-one school ERP. Payment collection is recorded manually through the admin API; no payment gateway is integrated. Reminders run when invoked by a scheduler; there is no hidden background scheduler. n8n workflows and automated spreadsheet integrations are not included.
 
-Open `out/demo_transcript.html` — a WhatsApp-styled transcript of **real engine
-output**, not a mockup. On Windows run `scripts\run_demo.bat`; on Linux/macOS
-`./scripts/run_demo.sh`.
+## Quick start
 
-Requires Python 3.11+. **No pip install. No dependencies.** Everything is stdlib,
-including the web server and SQLite access.
+Requirements: Docker Engine and the Docker Compose plugin. For running tests without Docker, use Python 3.11 or newer.
 
----
+1. Clone the repository and enter its folder.
 
-## What it does
+       git clone https://github.com/JustInCasesss/coaching-automation.git
+       cd coaching-automation
 
-### 1. Admission enquiries answered instantly
-A parent messages at 11:40 PM. They get a reply in under a second, not at 10 AM.
+2. Copy the example environment file.
 
-- Rich WhatsApp menus (not "reply 1 for admissions") — tap-to-choose buttons and
-  lists, which is what parents actually complete.
-- Multi-turn qualification: course → student's class → name → batch preference.
-- Full fee structure, installment plans, live seat counts, current offers.
-- Free demo class booking, then an instant **HOT lead alert** to the counsellor
-  with a lead score and the exact reason to call.
-- Lead scoring is deterministic, so a ₹500/month receptionist and the owner see
-  the same ranking: course +5, class +5, name +10, batch preference +15,
-  callback slot +20, fee question +10, demo request +25. ≥50 = HOT.
-- Anything ambiguous routes to a human with the context attached — it never
-  dead-ends a parent in a loop.
+   Windows PowerShell:
 
-### 2. Automated fee reminders
-A seven-stage ladder per installment, not one generic blast:
+       Copy-Item .env.example .env
 
-| Stage | Fires | Tone |
+   Linux/macOS:
+
+       cp .env.example .env
+
+3. Generate a strong admin token and paste it into the ADMIN_TOKEN entry in .env.
+
+       python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+4. Keep COACH_DEMO_MODE=true while testing. The app writes outbound WhatsApp payloads to data/outbox.jsonl instead of transmitting them.
+
+5. Build and start the service.
+
+       docker compose up --build -d
+
+Open https://localhost. Caddy may use a local development certificate. Check service health at https://localhost/health. For a real deployment, point a DNS hostname at the server, set BOT_HOST in .env to that hostname, allow inbound ports 80 and 443, and restart Compose. Caddy will provision HTTPS for a public hostname.
+
+To stop the service:
+
+       docker compose down
+
+The named bot-data volume is retained. To remove all saved data, you would have to delete that volume explicitly, so do not run volume-removal commands casually.
+
+## Run locally without Docker
+
+Create a virtual environment if preferred, then set COACH_DB, COACH_OUTBOX, ADMIN_TOKEN, and COACH_DEMO_MODE in your shell. No pip install is required.
+
+    python -m compileall -q coaching_bot tests
+    python -m unittest discover -s tests -v
+    python -m coaching_bot.cli init-db
+    python -m coaching_bot.cli serve --host 127.0.0.1 --port 8080
+
+The server refuses to start with a missing or obviously weak ADMIN_TOKEN. For local testing, use a unique random value at least 24 characters long.
+
+## Admin API
+
+Every /admin endpoint requires the X-Admin-Token request header. Use HTTPS for remote calls and never place the token in a URL.
+
+| Method | Endpoint | Purpose |
 |---|---|---|
-| T-7 | 7 days before due | friendly heads-up |
-| T-3 | 3 days before | polite reminder |
-| T-1 | 1 day before | due tomorrow |
-| D0 | due date | due today |
-| D+3 | 3 days late | overdue, offers an installment plan |
-| D+7 | 7 days late | firm + **escalates to accounts** |
-| D+15 | 15 days late | final notice + **escalates to accounts** |
+| GET | /health | Health check; no personal data |
+| GET | /admin/stats | Aggregate counts |
+| GET | /admin/leads | Recent captured leads |
+| POST | /admin/students | Create a student record |
+| POST | /admin/fees | Create a fee schedule entry |
+| POST | /admin/mark-paid | Mark a fee paid and attempt a receipt message |
+| POST | /admin/score | Record a test score and attempt a parent alert |
+| POST | /admin/run-reminders | Preview or run due fee reminders |
 
-What makes it survive contact with real parents:
+Example: create a student. Replace the example token with your own secret and use a valid parent number only in your private test environment.
 
-- **Exactly one reminder per fee per tick.** A fee that is 20 days overdue gets
-  the final notice, not seven messages at once because the server was down. Older
-  unsent stages are retired as `superseded`.
-- **Never double-sends.** `UNIQUE(fee_schedule_id, stage)` in the database, so a
-  double-fired cron or a restarted scheduler cannot duplicate. The second
-  consecutive tick in the 5-minute proof sends 0.
-- **Quiet hours.** Nothing goes out between 20:00 and 09:00 except the D+7 and
-  D+15 escalations, which are held and released on the next in-hours tick.
-- **Pause on reply.** If the parent is already in the chat, the reminder is held
-  and staff are still escalated. Nagging a parent who is actively talking to you
-  is how you get blocked.
-- **Opt-out is absolute.** `STOP` silences everything immediately; `START`
-  restores it. This supports DPDP/TRAI consent requirements, but it is not legal
-  advice - each institute must confirm its own compliance.
-- **Reply `PAID`** → routed to accounts with the parent's exact message, plus a
-  request for the screenshot or UTR.
-- **Receipt on payment** — the moment accounts marks a fee paid, the ladder is
-  cancelled and the parent gets an acknowledgement with the remaining balance.
+    curl -X POST https://YOUR_HOST/admin/students ^
+      -H "X-Admin-Token: YOUR_ADMIN_TOKEN" ^
+      -H "Content-Type: application/json" ^
+      -d "{\"roll_no\":\"DEMO-001\",\"full_name\":\"Example Student\",\"parent_phone\":\"910000000000\",\"course\":\"Foundation\"}"
 
-### 3. Student performance to parents
-- **Instant test-score alert** the evening a teacher enters marks: score, batch
-  average, the delta, batch rank, teacher's remark, and what to do next.
-- **On-demand report**: parent texts `REPORT` and gets subject-wise averages,
-  trend versus previous tests, attendance percentage, strongest and weakest
-  subject, and the latest test in full.
-- **Fortnightly digest** to every active parent (default Saturday 18:30).
-- **Low-attendance alerts** when a child drops below 75% in 30 days.
-- **Printable report card** per student at `GET /report/<roll_no>` — hand it over
-  at a parent-teacher meeting or attach it as a PDF.
+The API returns the newly-created student's integer id. Use it as student_id when creating a fee.
 
----
+    curl -X POST https://YOUR_HOST/admin/fees ^
+      -H "X-Admin-Token: YOUR_ADMIN_TOKEN" ^
+      -H "Content-Type: application/json" ^
+      -d "{\"student_id\":1,\"description\":\"October fee\",\"amount\":1200,\"due_date\":\"2026-10-30\"}"
 
-## Quick start (Docker)
+On Windows PowerShell, curl may be an alias for Invoke-WebRequest. Use curl.exe for the examples above or use Invoke-RestMethod.
 
-```bash
-git clone https://github.com/JustInCasesss/coaching-automation.git
-cd coaching-automation
-cp .env.example .env     # set ADMIN_TOKEN and N8N_VERSION (both required)
-docker compose up -d --build
-```
+### Preview a reminder run
 
-Without Docker: `python -m coaching_bot.cli demo --reseed` (Python 3.11+).
+The preview never sends a message and does not claim a reminder stage as sent.
 
-## Repository layout
+    curl -X POST https://YOUR_HOST/admin/run-reminders ^
+      -H "X-Admin-Token: YOUR_ADMIN_TOKEN" ^
+      -H "Content-Type: application/json" ^
+      -d "{\"dry_run\":true}"
 
-```
-coaching_bot/   the engine (server, flows, reminders, performance, whatsapp client, cli)
-config/         institute.json - demo configuration (replace per client)
-n8n/            importable n8n workflows
-deploy/         Caddyfile and systemd units
-scripts/        run_demo / smoke_test scripts
-docs/           offer, sales script, setup guide, Meta templates, runbook
-Dockerfile  docker-compose.yml  .env.example  .gitignore  .dockerignore
-```
+To run reminders live, pass dry_run=false after verifying the Meta credentials, approved template, consent process, and recipient data. Normal quiet hours are enforced even for manual runs. The force option can override quiet hours and should be reserved for controlled testing.
 
----
+## Connect WhatsApp Cloud API
 
-## Architecture
+1. Create and configure a Meta app with a WhatsApp Business Account and a production business phone number.
+2. Set WHATSAPP_TOKEN and WHATSAPP_PHONE_NUMBER_ID in the deployment environment.
+3. Set WHATSAPP_VERIFY_TOKEN to a long random value and configure the Meta webhook callback URL as https://YOUR_HOST/webhook using that same verification token.
+4. Set META_APP_SECRET so incoming webhook POST requests can be checked against X-Hub-Signature-256. In live deployments, webhook POST requests are rejected if the app secret is not configured.
+5. Leave COACH_DEMO_MODE=true until the webhook and replies have been tested. Set it to false only when you are ready to use live messaging.
+6. Submit and obtain approval for a fee-reminder template in WhatsApp Manager. Set WHATSAPP_REMINDER_TEMPLATE to its exact name.
 
-```
-   Parent's WhatsApp
-          │
-          ▼
-  Meta WhatsApp Cloud API  ──webhook──▶  coaching_bot/server.py
-          ▲                                   │
-          │                                   ▼
-          │                          coaching_bot/flows.py       conversation state machine
-          │                          coaching_bot/reminders.py   fee ladder, quiet hours, dedupe
-          │                          coaching_bot/performance.py score + attendance reporting
-          │                                   │
-          │                                   ▼
-          └────────── coaching_bot/whatsapp.py ──▶  SQLite (data/coaching.db)
-                     Cloud API client, dry-run capable    + data/outbox.jsonl (exact payloads)
+The configured reminder template must contain five body placeholders in this order: student name, amount, due date, reminder stage, and institute name. Adjust the code or template contract together if your approved template uses a different number or order. Set WHATSAPP_TEMPLATE_LANG to the approved language code.
 
-  n8n (n8n/*.json)  ── schedules, digests, CRM sync, payment-gateway webhooks ──▶ the same admin API
-```
+Scheduled fee reminders should use approved templates because parents may be outside the 24-hour customer-service window. Do not treat template submission or approval as automatic.
 
-Why this split: the conversation logic is a pure state machine that returns
-outbound actions instead of sending them. That is what lets the CLI demo, the
-webhook, and any future channel share one code path — and it is why the demo
-transcript is real output rather than a mockup.
+## Schedule fee reminders
 
-**White-label:** every client-specific value lives in `config/institute.json` —
-courses, fees, batch timings, branches, offers, reminder policy, branding, alert
-numbers. Onboarding a new centre is a new JSON file, not a code change.
+The service runs one reminder tick per command or API call. Add a daily scheduler on your server after confirming the instance timezone and the approved template. For example, from the repository directory at 09:15 server-local time:
 
----
+    docker compose exec -T bot python -m coaching_bot.cli reminders --live
 
-## Operator commands
+A sample crontab entry is included in deploy/reminders.cron. The application itself enforces Asia/Kolkata quiet hours by default. Test the command first without --live and inspect its JSON output.
 
-```bash
-python -m coaching_bot.cli seed --students 40          # load demo data
-python -m coaching_bot.cli demo                        # run conversations, write the transcript
-python -m coaching_bot.cli reminders --dry-run         # one tick, nothing sent
-python -m coaching_bot.cli reminders --live            # one tick, actually sends
-python -m coaching_bot.cli score --roll NEET-2026-100 --test "Weekly Test 10" \
-        --subject Physics --marks 74 --total 100 --batch-avg 61 --rank 12
-python -m coaching_bot.cli paid --roll NEET-2026-100 --amount 25000 --method UPI
-python -m coaching_bot.cli report --roll NEET-2026-100
-python -m coaching_bot.cli fortnightly                 # performance digests + attendance alerts
-python -m coaching_bot.cli stats
-python -m coaching_bot.cli output                      # write out/OUTPUT.md evidence pack
-python -m coaching_bot.cli serve --port 8080
-```
+## Configuration reference
 
-## HTTP API
+| Variable | Required | Notes |
+|---|---|---|
+| ADMIN_TOKEN | Yes | Unique random secret, at least 24 characters |
+| COACH_DEMO_MODE | Recommended true initially | Forces outbound messages into the local outbox |
+| WHATSAPP_TOKEN | For live WhatsApp | Use a long-lived system-user token with least privilege |
+| WHATSAPP_PHONE_NUMBER_ID | For live WhatsApp | Phone number ID from Meta |
+| WHATSAPP_VERIFY_TOKEN | For webhook verification | Must match Meta's webhook setting |
+| META_APP_SECRET | For live webhooks | Validates inbound webhook signatures |
+| WHATSAPP_REMINDER_TEMPLATE | For live reminders | Exact approved template name |
+| WHATSAPP_API_VERSION | No | Defaults to v26.0; update deliberately as Meta releases versions |
+| COACH_DB | No | SQLite path; defaults to data/coaching.db |
+| COACH_OUTBOX | No | Dry-run outbound payload log |
+| BOT_HOST | For public Compose deploy | DNS hostname handled by Caddy |
 
-| Route | Purpose |
-|---|---|
-| `GET /webhook` | Meta verification handshake |
-| `POST /webhook` | Meta inbound messages |
-| `GET /health` | liveness probe |
-| `GET /dashboard` | operator dashboard: hot leads, overdue fees, collections, alerts |
-| `GET /report/<roll_no>` | printable report card |
-| `POST /admin/run-reminders` | run one reminder tick |
-| `POST /admin/mark-paid` | record a payment, cancel the ladder, send the receipt |
-| `POST /admin/score` | enter a test score, push the parent alert |
-| `POST /admin/fortnightly-reports` | send performance digests + attendance alerts |
-| `POST /admin/broadcast` | message a filtered set of parents (course/batch/class/branch) |
-| `POST /admin/stats` · `overdue` · `leads` · `alerts` | data for n8n digests |
-| `POST /admin/reset-demo` | reload demo data |
+For all supported values, see .env.example.
 
-`/admin/*` requires the `X-Admin-Token` header. **Always set `ADMIN_TOKEN`** -
-`docker-compose.yml` refuses to start without it.
+## Development checks
 
-## Demo mode
+Run the exact checks used by CI:
 
-With no `WHATSAPP_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID`, the system runs in **dry-run**:
-every message is recorded in SQLite and appended to `data/outbox.jsonl` as the
-exact Cloud API JSON payload, and nothing is transmitted. That is what makes it
-safe to demo to a prospect with their real number in front of them — and what
-makes the audit trail provable. Set the credentials and the same code goes live.
+    python -m compileall -q coaching_bot tests
+    python -m unittest discover -s tests -v
 
-## Deploy
+The smoke-test script is scripts/smoke_test.sh. GitHub Actions runs compilation and unit tests on pushes and pull requests.
 
-- `Dockerfile` — zero-dependency image, non-root user, healthcheck.
-- `docker-compose.yml` — bot + n8n + Caddy (automatic TLS) on one 1 vCPU box.
-- `deploy/Caddyfile`, `deploy/coaching-bot.service`,
-  `deploy/coaching-bot-reminders.timer` — bare-metal systemd path.
-- `scripts/smoke_test.sh` — post-deploy verification, exits non-zero on failure.
+## Data and security
 
-A 1 vCPU / 1 GB VPS handles a 2,000-student centre comfortably; the workload is
-webhook-driven and a reminder tick is a few seconds twice a day.
+- Use a private repository for a real institute's deployment.
+- Never commit .env, SQLite files, outbox logs, real student records, or access tokens.
+- Keep a persistent, encrypted, access-controlled backup of the database. Verify restoration before relying on it.
+- Admin data endpoints are protected by X-Admin-Token, but access tokens must still be kept out of browser URLs and logs.
+- Demo mode is not production consent or compliance. Confirm WhatsApp opt-in, opt-out, approved template, retention, and applicable Indian data-protection requirements with the institute.
+- This project is not legal advice and does not certify DPDP, TRAI, or Meta policy compliance.
+- Use a persistent Docker volume or durable mounted storage. Ephemeral container storage is unsuitable for real student data.
 
-## Documentation
+## License
 
-| File | For |
-|---|---|
-| `docs/OFFER.md` | the productized offer, tiers, pricing, ROI model, guarantee |
-| `docs/SALES_SCRIPT.md` | discovery questions, demo flow, objection handling |
-| `docs/SETUP_GUIDE.md` | onboarding a new centre end to end |
-| `docs/TEMPLATES_FOR_META.md` | exact WhatsApp template copy to submit for approval |
-| `docs/RUNBOOK.md` | day-2 operations, troubleshooting, incident playbook |
-
-## The thing that actually blocks go-live
-
-Meta's **24-hour rule**: you may only send free-form text within 24 hours of the
-parent's last message. Outside that window every outbound message must use a
-pre-approved template. The engine handles this automatically — `pick_channel()`
-sends rich free-form text inside the window and the matching approved template
-outside it. But the templates themselves must be submitted and approved before
-go-live, which takes 1–3 working days. `docs/TEMPLATES_FOR_META.md` has the exact
-copy. **Submit templates on day one of onboarding, not day ten.**
-
-## Security notes
-
-- Never commit `.env`, tokens, real student records, or the `data/` folder
-  (`.gitignore` already excludes them).
-- n8n does not receive the WhatsApp token; it only gets the variables its
-  workflows need (see `docker-compose.yml`).
-- Pin `N8N_VERSION` to a specific release instead of `latest`.
-- Student names, fees and scores are personal data of minors and their families:
-  use a private repo and a persistent, backed-up server for any real client.
-
-## Before publishing or deploying
-
-- This repository contains a **demo institute configuration** in `config/institute.json`. Replace all example institute details, phone numbers, payment links, UPI ID, and tax identifiers with verified values before any real use.
-- Do not add `.env`, API tokens, real student records, or database/outbox files to GitHub.
-- For a safe demo, set `COACH_DEMO_MODE=true` and a strong `ADMIN_TOKEN` in Render Environment Variables.
-- Render's free filesystem is ephemeral. Do not use this free setup for real student records or production operation without persistent storage and a security review.
-
-## Render quick setup
-
-- Runtime: Python 3
-- Build command: `python --version`
-- Start command: `python -m coaching_bot.cli serve --host 0.0.0.0 --port $PORT`
-- Environment variables: `COACH_DEMO_MODE=true` and `ADMIN_TOKEN` set to a long random secret.
-
-The project uses Python's standard library only; no `requirements.txt` is needed.
+No open-source license has been added. Until the owner adds one, do not assume the code is licensed for redistribution or commercial reuse.
