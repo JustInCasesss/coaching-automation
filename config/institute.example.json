@@ -1,0 +1,166 @@
+{
+  "institute": {
+    "name": "CHANGE ME - Coaching Centre",
+    "tagline": "NEET | JEE | Foundation | Board",
+    "branches": [
+      "Demo Branch"
+    ],
+    "phone": "+910000000000",
+    "whatsapp_number": "+910000000000",
+    "email": "replace-me@example.com",
+    "website": "https://example.com",
+    "office_hours": "09:00-20:00",
+    "quiet_hours": "20:00-09:00",
+    "payment_link": "https://example.com/pay",
+    "upi_id": "demo@example",
+    "owner_alert_phone": "+910000000000",
+    "accounts_alert_phone": "+910000000000",
+    "counsellor_phone": "+910000000000",
+    "gstin": ""
+  },
+  "courses": [
+    {
+      "code": "NEET",
+      "label": "NEET (Medical)",
+      "classes": [
+        "11",
+        "12",
+        "Dropper"
+      ],
+      "duration": "1 year",
+      "fee_total": 78000,
+      "fee_plans": [
+        "One-time",
+        "3 installments",
+        "6 installments"
+      ],
+      "batch_timings": [
+        "07:00-10:30",
+        "16:00-19:30"
+      ],
+      "seats_left": 12
+    },
+    {
+      "code": "JEE",
+      "label": "JEE (Engineering)",
+      "classes": [
+        "11",
+        "12",
+        "Dropper"
+      ],
+      "duration": "1 year",
+      "fee_total": 82000,
+      "fee_plans": [
+        "One-time",
+        "3 installments",
+        "6 installments"
+      ],
+      "batch_timings": [
+        "07:00-10:30",
+        "16:00-19:30"
+      ],
+      "seats_left": 8
+    },
+    {
+      "code": "FOUNDATION",
+      "label": "Foundation (Class 8-10)",
+      "classes": [
+        "8",
+        "9",
+        "10"
+      ],
+      "duration": "1 year",
+      "fee_total": 42000,
+      "fee_plans": [
+        "One-time",
+        "3 installments"
+      ],
+      "batch_timings": [
+        "16:00-18:00",
+        "18:15-20:15"
+      ],
+      "seats_left": 24
+    },
+    {
+      "code": "BOARD",
+      "label": "Board Booster (10/12)",
+      "classes": [
+        "10",
+        "12"
+      ],
+      "duration": "6 months",
+      "fee_total": 28000,
+      "fee_plans": [
+        "One-time",
+        "2 installments"
+      ],
+      "batch_timings": [
+        "17:00-19:00"
+      ],
+      "seats_left": 30
+    }
+  ],
+  "offers": {
+    "demo_class": "Free demo class - no fees, no commitment",
+    "referral": "Example referral discount",
+    "sibling": "Example sibling discount",
+    "early_bird": "Example early-bird discount"
+  },
+  "fee_reminder_policy": {
+    "stages": [
+      {
+        "key": "T-7",
+        "offset_days": -7,
+        "tone": "friendly_heads_up"
+      },
+      {
+        "key": "T-3",
+        "offset_days": -3,
+        "tone": "polite_reminder"
+      },
+      {
+        "key": "T-1",
+        "offset_days": -1,
+        "tone": "due_tomorrow"
+      },
+      {
+        "key": "D0",
+        "offset_days": 0,
+        "tone": "due_today"
+      },
+      {
+        "key": "D+3",
+        "offset_days": 3,
+        "tone": "overdue_soft"
+      },
+      {
+        "key": "D+7",
+        "offset_days": 7,
+        "tone": "overdue_firm_escalate"
+      },
+      {
+        "key": "D+15",
+        "offset_days": 15,
+        "tone": "final_notice_escalate"
+      }
+    ],
+    "max_reminders_per_fee": 7,
+    "escalate_after_stage": "D+7",
+    "allow_partial_payment": true,
+    "pause_on_reply": true,
+    "reply_pause_hours": 12
+  },
+  "performance_policy": {
+    "report_frequency": "fortnightly",
+    "report_day": "saturday",
+    "report_time": "18:30",
+    "alert_on_test_score": true,
+    "alert_threshold_pct_below_batch_avg": 10,
+    "attendance_alert_below_pct": 75
+  },
+  "branding": {
+    "primary_color": "#075E54",
+    "accent_color": "#25D366",
+    "signature": "- Demo Coaching Centre"
+  }
+}
