@@ -1,0 +1,71 @@
+{
+  "name": "Coaching - Twice-monthly performance reports",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 18 1,15 * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "1st and 15th at 18:30",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.COACHING_BOT_URL + '/admin/fortnightly-reports' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Admin-Token",
+              "value": "={{ $env.COACHING_ADMIN_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "call-bot",
+      "name": "Generate performance reports",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "1st and 15th at 18:30": {
+      "main": [
+        [
+          {
+            "node": "Generate performance reports",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
