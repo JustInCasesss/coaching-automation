@@ -24,3 +24,9 @@ jobs:
         run: python -m compileall -q coaching_bot tests
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
+      - name: Validate Docker Compose configuration
+        run: |
+          cp .env.example .env
+          docker compose config --quiet
+      - name: Build container image
+        run: docker build --tag coaching-automation:test .
