@@ -1,0 +1,52 @@
+# Single-box deploy: the bot plus n8n, with Caddy terminating TLS.
+# The bot has no external services, so a 1 vCPU / 1 GB VPS runs a 2,000-student
+# centre comfortably. SQLite in a named volume; back it up with sqlite3 .backup.
+services:
+  bot:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - bot-data:/data
+      - ./config:/app/config:ro
+    expose:
+      - "8080"
+    # no ports: published - Caddy is the only thing that should reach it.
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - GENERIC_TIMEZONE=Asia/Kolkata
+      - TZ=Asia/Kolkata
+      - N8N_HOST=${N8N_HOST:-n8n.yourinstitute.in}
+      - WEBHOOK_URL=https://${N8N_HOST:-n8n.yourinstitute.in}/
+      - N8N_PROXY_HOPS=1
+    volumes:
+      - n8n-data:/home/node/.n8n
+    expose:
+      - "5678"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    environment:
+      - BOT_HOST=${BOT_HOST:-bot.yourinstitute.in}
+      - N8N_HOST=${N8N_HOST:-n8n.yourinstitute.in}
+    depends_on:
+      - bot
+      - n8n
+
+volumes:
+  bot-data:
+  n8n-data:
+  caddy-data:
+  caddy-config:
